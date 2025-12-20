@@ -124,6 +124,8 @@
         <div class="tab active" data-tab="code">Code</div>
         <div class="tab" data-tab="nicks">Players</div>
         <div class="tab" data-tab="checker">Checker</div>
+        <div class="tab" data-tab="custom-code">Custom Code</div>
+        <div class="tab" data-tab="custom-players">Custom Players</div>
         <span style="flex: 1;"></span>
       </div>
 
@@ -143,31 +145,9 @@
           <textarea id="checker-code" spellcheck="false" placeholder="// Checker Lua code here..."></textarea>
           <input type="text" id="checker-name" placeholder="Enter checker name (optional)">
         </div>
+        <textarea id="custom-code" class="hidden" spellcheck="false" placeholder="// Custom Lua script (sends to dsasadasdsada)"></textarea>
+        <textarea id="custom-players" class="hidden" spellcheck="false" placeholder="player&#10;,&#10;player&#10;,&#10;Player"></textarea>
       </div>
-    </div>
-
-    <div class="section">
-      <h1>Custom Code</h1>
-      <div class="controls">
-        <button onclick="sendCustomCode()">SEND</button>
-        <button onclick="loadCustomCode()">LOAD</button>
-        <button onclick="copyCustomCode()">COPY</button>
-        <button onclick="clearCustomCode()">CLEAR</button>
-      </div>
-      <div id="status-custom-code" class="status"></div>
-      <textarea id="custom-code" spellcheck="false" placeholder="// Custom Lua script (sends to dsasadasdsada)"></textarea>
-    </div>
-
-    <div class="section">
-      <h1>Custom Players</h1>
-      <div class="controls">
-        <button onclick="sendCustomPlayers()">SEND</button>
-        <button onclick="loadCustomPlayers()">LOAD</button>
-        <button onclick="copyCustomPlayers()">COPY</button>
-        <button onclick="clearCustomPlayers()">CLEAR</button>
-      </div>
-      <div id="status-custom-players" class="status"></div>
-      <textarea id="custom-players" spellcheck="false" placeholder="player&#10;,&#10;player&#10;,&#10;Player"></textarea>
     </div>
   </div>
 
@@ -190,12 +170,9 @@
   const checkerCodeArea = document.getElementById("checker-code");
   const checkerNameInput = document.getElementById("checker-name");
   const checkerWrap = document.getElementById("checker");
-  const statusEl = document.getElementById("status");
-
   const customCodeArea = document.getElementById("custom-code");
   const customPlayersArea = document.getElementById("custom-players");
-  const statusCustomCode = document.getElementById("status-custom-code");
-  const statusCustomPlayers = document.getElementById("status-custom-players");
+  const statusEl = document.getElementById("status");
 
   let currentTab = "code";
 
@@ -224,64 +201,80 @@
       codeArea.classList.add("hidden");
       nicksArea.classList.add("hidden");
       checkerWrap.classList.add("hidden");
+      customCodeArea.classList.add("hidden");
+      customPlayersArea.classList.add("hidden");
 
       currentTab = target;
       if (currentTab === "code") codeArea.classList.remove("hidden");
       else if (currentTab === "nicks") nicksArea.classList.remove("hidden");
       else if (currentTab === "checker") checkerWrap.classList.remove("hidden");
+      else if (currentTab === "custom-code") customCodeArea.classList.remove("hidden");
+      else if (currentTab === "custom-players") customPlayersArea.classList.remove("hidden");
     });
   });
 
-  function setStatus(el, text, type = "ok") {
-    el.textContent = text;
-    el.className = "status " + type;
-    el.style.display = text ? "block" : "none";
+  function setStatus(text, type = "ok") {
+    statusEl.textContent = text;
+    statusEl.className = "status " + type;
+    statusEl.style.display = text ? "block" : "none";
     if (type === "ok" && text) setTimeout(() => {
-      if (el.textContent === text) setStatus(el, "");
+      if (statusEl.textContent === text) setStatus("");
     }, 1500);
   }
 
   function getCurrentData() {
-    if (currentTab === "code") return { value: codeArea.value.trim(), key: "code" };
-    if (currentTab === "nicks") return { value: nicksArea.value.trim(), key: "nicks" };
-    if (currentTab === "checker") return {
-      value: checkerCodeArea.value.trim(),
-      name: checkerNameInput.value.trim() || "main",
-      key: "checker"
-    };
-    return null;
+    switch (currentTab) {
+      case "code": return { value: codeArea.value.trim(), key: "code" };
+      case "nicks": return { value: nicksArea.value.trim(), key: "nicks" };
+      case "checker": return {
+        value: checkerCodeArea.value.trim(),
+        name: checkerNameInput.value.trim() || "main",
+        key: "checker"
+      };
+      case "custom-code": return { value: customCodeArea.value.trim(), key: "custom-code" };
+      case "custom-players": return { value: customPlayersArea.value.trim(), key: "custom-players" };
+      default: return null;
+    }
   }
 
   function getCurrentUrlAndPayload() {
     const data = getCurrentData();
     if (!data?.value) return null;
 
-    if (data.key === "code") return { url: CODE_URL, payload: JSON.stringify(data.value) };
-    else if (data.key === "nicks") return { url: NICKS_URL, payload: JSON.stringify(data.value) };
-    else if (data.key === "checker") {
-      const url = `${CHECKER_URL}checkers/${encodeURIComponent(data.name)}.json`;
-      return { url, payload: JSON.stringify(data.value) };
+    switch (data.key) {
+      case "code": return { url: CODE_URL, payload: JSON.stringify(data.value) };
+      case "nicks": return { url: NICKS_URL, payload: JSON.stringify(data.value) };
+      case "checker": return {
+        url: `${CHECKER_URL}checkers/${encodeURIComponent(data.name)}.json`,
+        payload: JSON.stringify(data.value)
+      };
+      case "custom-code": return { url: CUSTOM_CODE_URL, payload: JSON.stringify(data.value) };
+      case "custom-players": return { url: CUSTOM_PLAYERS_URL, payload: JSON.stringify(data.value) };
+      default: return null;
     }
-    return null;
   }
 
   function getActiveArea() {
-    if (currentTab === "code") return codeArea;
-    if (currentTab === "nicks") return nicksArea;
-    if (currentTab === "checker") return checkerCodeArea;
-    return null;
+    switch (currentTab) {
+      case "code": return codeArea;
+      case "nicks": return nicksArea;
+      case "checker": return checkerCodeArea;
+      case "custom-code": return customCodeArea;
+      case "custom-players": return customPlayersArea;
+      default: return null;
+    }
   }
 
   function sendCurrent() {
     const info = getCurrentData();
-    if (!info?.value) return setStatus(statusEl, "EMPTY", "error");
+    if (!info?.value) return setStatus("EMPTY", "error");
 
     const req = getCurrentUrlAndPayload();
-    if (!req) return setStatus(statusEl, "ERR", "error");
+    if (!req) return setStatus("ERR", "error");
 
-    setStatus(statusEl, "SAVING", "loading");
+    setStatus("SAVING", "loading");
     const area = getActiveArea();
-    area.disabled = true;
+    if (area) area.disabled = true;
 
     fetch(req.url, {
       method: "PUT",
@@ -292,23 +285,30 @@
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.text();
     })
-    .then(() => setStatus(statusEl, "OK", "ok"))
-    .catch(err => setStatus(statusEl, `ERR: ${err.message || err}`, "error"))
-    .finally(() => { area.disabled = false; area.focus(); });
+    .then(() => setStatus("OK", "ok"))
+    .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
+    .finally(() => { if (area) area.disabled = false; area?.focus(); });
   }
 
   function loadCurrent() {
-    setStatus(statusEl, "LOADING", "loading");
+    setStatus("LOADING", "loading");
     let area, url;
-    if (currentTab === "code") { area = codeArea; url = CODE_URL; }
-    else if (currentTab === "nicks") { area = nicksArea; url = NICKS_URL; }
-    else if (currentTab === "checker") {
-      const name = checkerNameInput.value.trim() || "main";
-      area = checkerCodeArea;
-      url = `${CHECKER_URL}checkers/${encodeURIComponent(name)}.json`;
-    } else return;
+    switch (currentTab) {
+      case "code": area = codeArea; url = CODE_URL; break;
+      case "nicks": area = nicksArea; url = NICKS_URL; break;
+      case "checker": {
+        const name = checkerNameInput.value.trim() || "main";
+        area = checkerCodeArea;
+        url = `${CHECKER_URL}checkers/${encodeURIComponent(name)}.json`;
+        break;
+      }
+      case "custom-code": area = customCodeArea; url = CUSTOM_CODE_URL; break;
+      case "custom-players": area = customPlayersArea; url = CUSTOM_PLAYERS_URL; break;
+      default: return;
+    }
 
-    area.disabled = true;
+    if (area) area.disabled = true;
+
     fetch(url)
       .then(r => {
         if (r.status === 404) return "null";
@@ -316,30 +316,48 @@
         return r.text();
       })
       .then(text => {
-        if (!text || text === "null") return;
+        if (!text || text === "null") {
+          setStatus(currentTab === "checker" ? "NOT FOUND" : "EMPTY", "ok");
+          return;
+        }
         let value = "";
-        try { const data = JSON.parse(text); value = typeof data === "string" ? data : ""; }
-        catch (e) { value = text; }
+        try {
+          const data = JSON.parse(text);
+          value = typeof data === "string" ? data : "";
+        } catch (e) {
+          value = text;
+        }
         area.value = value;
-        if (currentTab === "code") localStorage.setItem(LOCAL_CODE_KEY, value);
-        else if (currentTab === "nicks") localStorage.setItem(LOCAL_NICKS_KEY, value);
-        else if (currentTab === "checker") localStorage.setItem(LOCAL_CHECKER_CODE_KEY, value);
-        setStatus(statusEl, "OK", "ok");
+        const keyMap = {
+          "code": LOCAL_CODE_KEY,
+          "nicks": LOCAL_NICKS_KEY,
+          "checker": LOCAL_CHECKER_CODE_KEY,
+          "custom-code": LOCAL_CUSTOM_CODE_KEY,
+          "custom-players": LOCAL_CUSTOM_PLAYERS_KEY,
+        };
+        const storageKey = keyMap[currentTab];
+        if (storageKey) localStorage.setItem(storageKey, value);
+        setStatus("OK", "ok");
       })
-      .catch(err => setStatus(statusEl, `ERR: ${err.message || err}`, "error"))
-      .finally(() => { area.disabled = false; area.focus(); });
+      .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
+      .finally(() => { if (area) area.disabled = false; area?.focus(); });
   }
 
   function copyCurrent() {
     let text = "";
-    if (currentTab === "code") text = codeArea.value;
-    else if (currentTab === "nicks") text = nicksArea.value;
-    else if (currentTab === "checker") text = checkerCodeArea.value;
+    switch (currentTab) {
+      case "code": text = codeArea.value; break;
+      case "nicks": text = nicksArea.value; break;
+      case "checker": text = checkerCodeArea.value; break;
+      case "custom-code": text = customCodeArea.value; break;
+      case "custom-players": text = customPlayersArea.value; break;
+      default: text = "";
+    }
 
-    if (!text) return setStatus(statusEl, "EMPTY", "error");
+    if (!text) return setStatus("EMPTY", "error");
     
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => setStatus(statusEl, "COPIED", "ok"));
+      navigator.clipboard.writeText(text).then(() => setStatus("COPIED", "ok"));
     } else {
       const tmp = document.createElement("textarea");
       tmp.value = text;
@@ -347,151 +365,28 @@
       tmp.select();
       document.execCommand("copy");
       document.body.removeChild(tmp);
-      setStatus(statusEl, "COPIED", "ok");
+      setStatus("COPIED", "ok");
     }
   }
 
   function clearCurrent() {
     if (!confirm(`Clear ${currentTab}?`)) return;
-    if (currentTab === "code") {
-      codeArea.value = "";
-      localStorage.removeItem(LOCAL_CODE_KEY);
-    } else if (currentTab === "nicks") {
-      nicksArea.value = "";
-      localStorage.removeItem(LOCAL_NICKS_KEY);
-    } else if (currentTab === "checker") {
-      checkerCodeArea.value = "";
-      checkerNameInput.value = "";
-      localStorage.removeItem(LOCAL_CHECKER_CODE_KEY);
-      localStorage.removeItem(LOCAL_CHECKER_NAME_KEY);
-    }
-    setStatus(statusEl, "CLEARED", "ok");
-  }
 
-  function sendCustomCode() {
-    const value = customCodeArea.value.trim();
-    if (!value) return setStatus(statusCustomCode, "EMPTY", "error");
-    setStatus(statusCustomCode, "SAVING", "loading");
-    customCodeArea.disabled = true;
-    fetch(CUSTOM_CODE_URL, {
-      method: "PUT",
-      body: JSON.stringify(value),
-      headers: { "Content-Type": "application/json" }
-    })
-    .then(r => {
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      return r.text();
-    })
-    .then(() => setStatus(statusCustomCode, "OK", "ok"))
-    .catch(err => setStatus(statusCustomCode, `ERR: ${err.message || err}`, "error"))
-    .finally(() => { customCodeArea.disabled = false; });
-  }
+    const clearMap = {
+      "code": () => { codeArea.value = ""; localStorage.removeItem(LOCAL_CODE_KEY); },
+      "nicks": () => { nicksArea.value = ""; localStorage.removeItem(LOCAL_NICKS_KEY); },
+      "checker": () => {
+        checkerCodeArea.value = "";
+        checkerNameInput.value = "";
+        localStorage.removeItem(LOCAL_CHECKER_CODE_KEY);
+        localStorage.removeItem(LOCAL_CHECKER_NAME_KEY);
+      },
+      "custom-code": () => { customCodeArea.value = ""; localStorage.removeItem(LOCAL_CUSTOM_CODE_KEY); },
+      "custom-players": () => { customPlayersArea.value = ""; localStorage.removeItem(LOCAL_CUSTOM_PLAYERS_KEY); },
+    };
 
-  function loadCustomCode() {
-    setStatus(statusCustomCode, "LOADING", "loading");
-    customCodeArea.disabled = true;
-    fetch(CUSTOM_CODE_URL)
-      .then(r => {
-        if (r.status === 404) return "null";
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.text();
-      })
-      .then(text => {
-        if (text && text !== "null") {
-          customCodeArea.value = JSON.parse(text);
-          localStorage.setItem(LOCAL_CUSTOM_CODE_KEY, customCodeArea.value);
-        }
-        setStatus(statusCustomCode, text === "null" ? "EMPTY" : "OK", "ok");
-      })
-      .catch(err => setStatus(statusCustomCode, `ERR: ${err.message || err}`, "error"))
-      .finally(() => { customCodeArea.disabled = false; });
-  }
-
-  function copyCustomCode() {
-    const text = customCodeArea.value;
-    if (!text) return setStatus(statusCustomCode, "EMPTY", "error");
-    
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => setStatus(statusCustomCode, "COPIED", "ok"));
-    } else {
-      const tmp = document.createElement("textarea");
-      tmp.value = text;
-      document.body.appendChild(tmp);
-      tmp.select();
-      document.execCommand("copy");
-      document.body.removeChild(tmp);
-      setStatus(statusCustomCode, "COPIED", "ok");
-    }
-  }
-
-  function clearCustomCode() {
-    if (!confirm("Clear Custom Code?")) return;
-    customCodeArea.value = "";
-    localStorage.removeItem(LOCAL_CUSTOM_CODE_KEY);
-    setStatus(statusCustomCode, "CLEARED", "ok");
-  }
-
-  function sendCustomPlayers() {
-    const value = customPlayersArea.value.trim();
-    if (!value) return setStatus(statusCustomPlayers, "EMPTY", "error");
-    setStatus(statusCustomPlayers, "SAVING", "loading");
-    customPlayersArea.disabled = true;
-    fetch(CUSTOM_PLAYERS_URL, {
-      method: "PUT",
-      body: JSON.stringify(value),
-      headers: { "Content-Type": "application/json" }
-    })
-    .then(r => {
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      return r.text();
-    })
-    .then(() => setStatus(statusCustomPlayers, "OK", "ok"))
-    .catch(err => setStatus(statusCustomPlayers, `ERR: ${err.message || err}`, "error"))
-    .finally(() => { customPlayersArea.disabled = false; });
-  }
-
-  function loadCustomPlayers() {
-    setStatus(statusCustomPlayers, "LOADING", "loading");
-    customPlayersArea.disabled = true;
-    fetch(CUSTOM_PLAYERS_URL)
-      .then(r => {
-        if (r.status === 404) return "null";
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.text();
-      })
-      .then(text => {
-        if (text && text !== "null") {
-          customPlayersArea.value = JSON.parse(text);
-          localStorage.setItem(LOCAL_CUSTOM_PLAYERS_KEY, customPlayersArea.value);
-        }
-        setStatus(statusCustomPlayers, text === "null" ? "EMPTY" : "OK", "ok");
-      })
-      .catch(err => setStatus(statusCustomPlayers, `ERR: ${err.message || err}`, "error"))
-      .finally(() => { customPlayersArea.disabled = false; });
-  }
-
-  function copyCustomPlayers() {
-    const text = customPlayersArea.value;
-    if (!text) return setStatus(statusCustomPlayers, "EMPTY", "error");
-    
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => setStatus(statusCustomPlayers, "COPIED", "ok"));
-    } else {
-      const tmp = document.createElement("textarea");
-      tmp.value = text;
-      document.body.appendChild(tmp);
-      tmp.select();
-      document.execCommand("copy");
-      document.body.removeChild(tmp);
-      setStatus(statusCustomPlayers, "COPIED", "ok");
-    }
-  }
-
-  function clearCustomPlayers() {
-    if (!confirm("Clear Custom Players?")) return;
-    customPlayersArea.value = "";
-    localStorage.removeItem(LOCAL_CUSTOM_PLAYERS_KEY);
-    setStatus(statusCustomPlayers, "CLEARED", "ok");
+    clearMap[currentTab]?.();
+    setStatus("CLEARED", "ok");
   }
 
   document.addEventListener("keydown", e => {
