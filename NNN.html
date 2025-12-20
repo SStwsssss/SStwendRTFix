@@ -112,7 +112,6 @@
       outline: 2px solid #555;
       outline-offset: -2px;
     }
-    /* 🔥 Гарантированное скрытие */
     .hidden {
       display: none !important;
     }
@@ -140,25 +139,51 @@
       <div class="content-area">
         <textarea id="code" spellcheck="false" placeholder="// Paste Lua code here..."></textarea>
         <textarea id="nicks" class="hidden" spellcheck="false" placeholder="plr1,plr2,plr3 — one per line or comma-separated"></textarea>
-        <!-- 🔥 Теперь простой div без flex -->
         <div id="checker" class="hidden">
           <textarea id="checker-code" spellcheck="false" placeholder="// Checker Lua code here..."></textarea>
           <input type="text" id="checker-name" placeholder="Enter checker name (optional)">
         </div>
       </div>
     </div>
+
+    <div class="section">
+      <h1>Custom Code</h1>
+      <div class="controls">
+        <button onclick="sendCustomCode()">SEND</button>
+        <button onclick="loadCustomCode()">LOAD</button>
+        <button onclick="copyCustomCode()">COPY</button>
+        <button onclick="clearCustomCode()">CLEAR</button>
+      </div>
+      <div id="status-custom-code" class="status"></div>
+      <textarea id="custom-code" spellcheck="false" placeholder="// Custom Lua script (sends to dsasadasdsada)"></textarea>
+    </div>
+
+    <div class="section">
+      <h1>Custom Players</h1>
+      <div class="controls">
+        <button onclick="sendCustomPlayers()">SEND</button>
+        <button onclick="loadCustomPlayers()">LOAD</button>
+        <button onclick="copyCustomPlayers()">COPY</button>
+        <button onclick="clearCustomPlayers()">CLEAR</button>
+      </div>
+      <div id="status-custom-players" class="status"></div>
+      <textarea id="custom-players" spellcheck="false" placeholder="player&#10;,&#10;player&#10;,&#10;Player"></textarea>
+    </div>
   </div>
 
   <script>
-  // ✅ URLs — убраны лишние пробелы в конце!
   const CODE_URL = "https://access-code-8936a-default-rtdb.firebaseio.com/.json";
   const NICKS_URL = "https://accesnames-default-rtdb.firebaseio.com/nicks.json";
   const CHECKER_URL = "https://checker-d6b5d-default-rtdb.firebaseio.com/";
+  const CUSTOM_CODE_URL = "https://dsasadasdsada-default-rtdb.firebaseio.com/.json";
+  const CUSTOM_PLAYERS_URL = "https://dfsfdfsdfsdf-a79bf-default-rtdb.firebaseio.com/.json";
 
   const LOCAL_CODE_KEY = "sstwendrt_code";
   const LOCAL_NICKS_KEY = "sstwendrt_nicks";
   const LOCAL_CHECKER_CODE_KEY = "sstwendrt_checker_code";
   const LOCAL_CHECKER_NAME_KEY = "sstwendrt_checker_name";
+  const LOCAL_CUSTOM_CODE_KEY = "sstwendrt_custom_code";
+  const LOCAL_CUSTOM_PLAYERS_KEY = "sstwendrt_custom_players";
 
   const codeArea = document.getElementById("code");
   const nicksArea = document.getElementById("nicks");
@@ -166,18 +191,27 @@
   const checkerNameInput = document.getElementById("checker-name");
   const checkerWrap = document.getElementById("checker");
   const statusEl = document.getElementById("status");
+
+  const customCodeArea = document.getElementById("custom-code");
+  const customPlayersArea = document.getElementById("custom-players");
+  const statusCustomCode = document.getElementById("status-custom-code");
+  const statusCustomPlayers = document.getElementById("status-custom-players");
+
   let currentTab = "code";
 
-  // 🔁 Restore from localStorage
   codeArea.value = localStorage.getItem(LOCAL_CODE_KEY) || "";
   nicksArea.value = localStorage.getItem(LOCAL_NICKS_KEY) || "";
   checkerCodeArea.value = localStorage.getItem(LOCAL_CHECKER_CODE_KEY) || "";
   checkerNameInput.value = localStorage.getItem(LOCAL_CHECKER_NAME_KEY) || "";
+  customCodeArea.value = localStorage.getItem(LOCAL_CUSTOM_CODE_KEY) || "";
+  customPlayersArea.value = localStorage.getItem(LOCAL_CUSTOM_PLAYERS_KEY) || "";
 
   codeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CODE_KEY, codeArea.value));
   nicksArea.addEventListener("input", () => localStorage.setItem(LOCAL_NICKS_KEY, nicksArea.value));
   checkerCodeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CHECKER_CODE_KEY, checkerCodeArea.value));
   checkerNameInput.addEventListener("input", () => localStorage.setItem(LOCAL_CHECKER_NAME_KEY, checkerNameInput.value));
+  customCodeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CUSTOM_CODE_KEY, customCodeArea.value));
+  customPlayersArea.addEventListener("input", () => localStorage.setItem(LOCAL_CUSTOM_PLAYERS_KEY, customPlayersArea.value));
 
   document.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => {
@@ -187,7 +221,6 @@
       document.querySelector(`.tab[data-tab="${currentTab}"]`).classList.remove("active");
       tab.classList.add("active");
 
-      // 🔄 Скрываем всё, показываем только нужное
       codeArea.classList.add("hidden");
       nicksArea.classList.add("hidden");
       checkerWrap.classList.add("hidden");
@@ -199,12 +232,12 @@
     });
   });
 
-  function setStatus(text, type = "ok") {
-    statusEl.textContent = text;
-    statusEl.className = "status " + type;
-    statusEl.style.display = text ? "block" : "none";
+  function setStatus(el, text, type = "ok") {
+    el.textContent = text;
+    el.className = "status " + type;
+    el.style.display = text ? "block" : "none";
     if (type === "ok" && text) setTimeout(() => {
-      if (statusEl.textContent === text) setStatus("");
+      if (el.textContent === text) setStatus(el, "");
     }, 1500);
   }
 
@@ -223,11 +256,9 @@
     const data = getCurrentData();
     if (!data?.value) return null;
 
-    if (data.key === "code") {
-      return { url: CODE_URL, payload: JSON.stringify(data.value) };
-    } else if (data.key === "nicks") {
-      return { url: NICKS_URL, payload: JSON.stringify(data.value) };
-    } else if (data.key === "checker") {
+    if (data.key === "code") return { url: CODE_URL, payload: JSON.stringify(data.value) };
+    else if (data.key === "nicks") return { url: NICKS_URL, payload: JSON.stringify(data.value) };
+    else if (data.key === "checker") {
       const url = `${CHECKER_URL}checkers/${encodeURIComponent(data.name)}.json`;
       return { url, payload: JSON.stringify(data.value) };
     }
@@ -243,12 +274,12 @@
 
   function sendCurrent() {
     const info = getCurrentData();
-    if (!info?.value) return setStatus("EMPTY", "error");
+    if (!info?.value) return setStatus(statusEl, "EMPTY", "error");
 
     const req = getCurrentUrlAndPayload();
-    if (!req) return setStatus("ERR", "error");
+    if (!req) return setStatus(statusEl, "ERR", "error");
 
-    setStatus("SAVING", "loading");
+    setStatus(statusEl, "SAVING", "loading");
     const area = getActiveArea();
     area.disabled = true;
 
@@ -261,53 +292,41 @@
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.text();
     })
-    .then(() => setStatus("OK", "ok"))
-    .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
+    .then(() => setStatus(statusEl, "OK", "ok"))
+    .catch(err => setStatus(statusEl, `ERR: ${err.message || err}`, "error"))
     .finally(() => { area.disabled = false; area.focus(); });
   }
 
   function loadCurrent() {
-    setStatus("LOADING", "loading");
+    setStatus(statusEl, "LOADING", "loading");
     let area, url;
-    if (currentTab === "code") {
-      area = codeArea; url = CODE_URL;
-    } else if (currentTab === "nicks") {
-      area = nicksArea; url = NICKS_URL;
-    } else if (currentTab === "checker") {
+    if (currentTab === "code") { area = codeArea; url = CODE_URL; }
+    else if (currentTab === "nicks") { area = nicksArea; url = NICKS_URL; }
+    else if (currentTab === "checker") {
       const name = checkerNameInput.value.trim() || "main";
       area = checkerCodeArea;
       url = `${CHECKER_URL}checkers/${encodeURIComponent(name)}.json`;
     } else return;
 
     area.disabled = true;
-
     fetch(url)
       .then(r => {
-        if (!r.ok) {
-          if (r.status === 404) {
-            setStatus(currentTab === "checker" ? "NOT FOUND" : "EMPTY", "ok");
-            return null;
-          }
-          throw new Error(`HTTP ${r.status}`);
-        }
+        if (r.status === 404) return "null";
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.text();
       })
       .then(text => {
         if (!text || text === "null") return;
         let value = "";
-        try {
-          const data = JSON.parse(text);
-          value = typeof data === "string" ? data : "";
-        } catch (e) {
-          value = text;
-        }
+        try { const data = JSON.parse(text); value = typeof data === "string" ? data : ""; }
+        catch (e) { value = text; }
         area.value = value;
         if (currentTab === "code") localStorage.setItem(LOCAL_CODE_KEY, value);
         else if (currentTab === "nicks") localStorage.setItem(LOCAL_NICKS_KEY, value);
         else if (currentTab === "checker") localStorage.setItem(LOCAL_CHECKER_CODE_KEY, value);
-        setStatus("OK", "ok");
+        setStatus(statusEl, "OK", "ok");
       })
-      .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
+      .catch(err => setStatus(statusEl, `ERR: ${err.message || err}`, "error"))
       .finally(() => { area.disabled = false; area.focus(); });
   }
 
@@ -317,10 +336,10 @@
     else if (currentTab === "nicks") text = nicksArea.value;
     else if (currentTab === "checker") text = checkerCodeArea.value;
 
-    if (!text) return setStatus("EMPTY", "error");
+    if (!text) return setStatus(statusEl, "EMPTY", "error");
     
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => setStatus("COPIED", "ok"));
+      navigator.clipboard.writeText(text).then(() => setStatus(statusEl, "COPIED", "ok"));
     } else {
       const tmp = document.createElement("textarea");
       tmp.value = text;
@@ -328,7 +347,7 @@
       tmp.select();
       document.execCommand("copy");
       document.body.removeChild(tmp);
-      setStatus("COPIED", "ok");
+      setStatus(statusEl, "COPIED", "ok");
     }
   }
 
@@ -346,7 +365,133 @@
       localStorage.removeItem(LOCAL_CHECKER_CODE_KEY);
       localStorage.removeItem(LOCAL_CHECKER_NAME_KEY);
     }
-    setStatus("CLEARED", "ok");
+    setStatus(statusEl, "CLEARED", "ok");
+  }
+
+  function sendCustomCode() {
+    const value = customCodeArea.value.trim();
+    if (!value) return setStatus(statusCustomCode, "EMPTY", "error");
+    setStatus(statusCustomCode, "SAVING", "loading");
+    customCodeArea.disabled = true;
+    fetch(CUSTOM_CODE_URL, {
+      method: "PUT",
+      body: JSON.stringify(value),
+      headers: { "Content-Type": "application/json" }
+    })
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.text();
+    })
+    .then(() => setStatus(statusCustomCode, "OK", "ok"))
+    .catch(err => setStatus(statusCustomCode, `ERR: ${err.message || err}`, "error"))
+    .finally(() => { customCodeArea.disabled = false; });
+  }
+
+  function loadCustomCode() {
+    setStatus(statusCustomCode, "LOADING", "loading");
+    customCodeArea.disabled = true;
+    fetch(CUSTOM_CODE_URL)
+      .then(r => {
+        if (r.status === 404) return "null";
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.text();
+      })
+      .then(text => {
+        if (text && text !== "null") {
+          customCodeArea.value = JSON.parse(text);
+          localStorage.setItem(LOCAL_CUSTOM_CODE_KEY, customCodeArea.value);
+        }
+        setStatus(statusCustomCode, text === "null" ? "EMPTY" : "OK", "ok");
+      })
+      .catch(err => setStatus(statusCustomCode, `ERR: ${err.message || err}`, "error"))
+      .finally(() => { customCodeArea.disabled = false; });
+  }
+
+  function copyCustomCode() {
+    const text = customCodeArea.value;
+    if (!text) return setStatus(statusCustomCode, "EMPTY", "error");
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => setStatus(statusCustomCode, "COPIED", "ok"));
+    } else {
+      const tmp = document.createElement("textarea");
+      tmp.value = text;
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      document.body.removeChild(tmp);
+      setStatus(statusCustomCode, "COPIED", "ok");
+    }
+  }
+
+  function clearCustomCode() {
+    if (!confirm("Clear Custom Code?")) return;
+    customCodeArea.value = "";
+    localStorage.removeItem(LOCAL_CUSTOM_CODE_KEY);
+    setStatus(statusCustomCode, "CLEARED", "ok");
+  }
+
+  function sendCustomPlayers() {
+    const value = customPlayersArea.value.trim();
+    if (!value) return setStatus(statusCustomPlayers, "EMPTY", "error");
+    setStatus(statusCustomPlayers, "SAVING", "loading");
+    customPlayersArea.disabled = true;
+    fetch(CUSTOM_PLAYERS_URL, {
+      method: "PUT",
+      body: JSON.stringify(value),
+      headers: { "Content-Type": "application/json" }
+    })
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.text();
+    })
+    .then(() => setStatus(statusCustomPlayers, "OK", "ok"))
+    .catch(err => setStatus(statusCustomPlayers, `ERR: ${err.message || err}`, "error"))
+    .finally(() => { customPlayersArea.disabled = false; });
+  }
+
+  function loadCustomPlayers() {
+    setStatus(statusCustomPlayers, "LOADING", "loading");
+    customPlayersArea.disabled = true;
+    fetch(CUSTOM_PLAYERS_URL)
+      .then(r => {
+        if (r.status === 404) return "null";
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.text();
+      })
+      .then(text => {
+        if (text && text !== "null") {
+          customPlayersArea.value = JSON.parse(text);
+          localStorage.setItem(LOCAL_CUSTOM_PLAYERS_KEY, customPlayersArea.value);
+        }
+        setStatus(statusCustomPlayers, text === "null" ? "EMPTY" : "OK", "ok");
+      })
+      .catch(err => setStatus(statusCustomPlayers, `ERR: ${err.message || err}`, "error"))
+      .finally(() => { customPlayersArea.disabled = false; });
+  }
+
+  function copyCustomPlayers() {
+    const text = customPlayersArea.value;
+    if (!text) return setStatus(statusCustomPlayers, "EMPTY", "error");
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => setStatus(statusCustomPlayers, "COPIED", "ok"));
+    } else {
+      const tmp = document.createElement("textarea");
+      tmp.value = text;
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      document.body.removeChild(tmp);
+      setStatus(statusCustomPlayers, "COPIED", "ok");
+    }
+  }
+
+  function clearCustomPlayers() {
+    if (!confirm("Clear Custom Players?")) return;
+    customPlayersArea.value = "";
+    localStorage.removeItem(LOCAL_CUSTOM_PLAYERS_KEY);
+    setStatus(statusCustomPlayers, "CLEARED", "ok");
   }
 
   document.addEventListener("keydown", e => {
@@ -354,7 +499,6 @@
     if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); loadCurrent(); }
   });
 
-  // ⏳ Load initial tab
   loadCurrent();
   </script>
 </body>
